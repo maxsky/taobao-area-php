@@ -6,68 +6,63 @@
  * Time: 下午1:59
  */
 
-class makeJsData
-{
-    private $path     = '';
-    private $city     = [];
+class makeJsData {
+    private $path = '';
+    private $city = [];
     private $city_ext = [];
 
     /**
      * @param string $path
      */
-    public function setPath($path)
-    {
+    public function setPath($path) {
         $this->path = trim($path);
     }
 
     /**
      * @param array $city
      */
-    public function setCity($city)
-    {
+    public function setCity($city) {
         $this->city = $city;
     }
 
     /**
      * @param array $city_ext
      */
-    public function setCityExt($city_ext)
-    {
+    public function setCityExt($city_ext) {
         $this->city_ext = $city_ext;
     }
 
-    public function process()
-    {
+    public function process() {
         $city = '';
         if ($this->city) {
             $data = [];
             foreach ($this->city as $item) {
                 //不需要国家
-                if($item['parent_id']==1){
+                if ($item['parent_id'] == 1) {
                     continue;
                 }
-                $add                        = [];
-                $add[]                      = (int)$item['id'];
-                $add[]                      = $item['name'];
-                $add[]                      = (int)$item['parent_id'];
-                $add[]                      = (int)$item['type'];
-                $add[]                      = trim($item['type_name']);
-                $add[]                      = trim($item['other_name']);
+                $add = [];
+                $add[] = (int)$item['id'];
+                $add[] = $item['name'];
+                $add[] = (int)$item['parent_id'];
+                $add[] = (int)$item['type'];
+                $add[] = trim($item['type_name']);
+                $add[] = trim($item['other_name']);
                 $data[$item['parent_id']][] = $add;
             }
             if ($this->city_ext) {
                 foreach ($this->city_ext as $item) {
                     //不需要国家
-                    if($item['parent_id']==1){
+                    if ($item['parent_id'] == 1) {
                         continue;
                     }
-                    $add                        = [];
-                    $add[]                      = (int)$item['id'];
-                    $add[]                      = $item['name'];
-                    $add[]                      = (int)$item['parent_id'];
-                    $add[]                      = (int)$item['type'];
-                    $add[]                      = trim($item['type_name']);
-                    $add[]                      = trim($item['other_name']);
+                    $add = [];
+                    $add[] = (int)$item['id'];
+                    $add[] = $item['name'];
+                    $add[] = (int)$item['parent_id'];
+                    $add[] = (int)$item['type'];
+                    $add[] = trim($item['type_name']);
+                    $add[] = trim($item['other_name']);
                     $data[$item['parent_id']][] = $add;
                 }
             }
@@ -76,7 +71,7 @@ class makeJsData
             $city = rtrim($city, '}');
         }
         $time = date('Y-m-d H:i:s');
-        $str  = <<<EOF
+        $str = <<<EOF
 /* 
  * Auto Make Date: {$time}
  */
