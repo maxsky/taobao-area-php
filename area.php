@@ -5,7 +5,7 @@ class area {
     private $file_name = 'taobao-area.js';
     private $is_country = true;
     private $make_csv = false;
-    private $make_sql = true;
+    private $make_sql = false;
     private $make_js_data = false;
     private $ext_data = [];
     //省
@@ -84,14 +84,14 @@ class area {
      *
      * @param array $ext_data
      */
-    public function setExtData($ext_data) {
+    public function setExtData($ext_data = []) {
         $this->ext_data = $ext_data;
     }
 
     /**
      * @param bool $make_js_data
      */
-    public function setMakeJsData($make_js_data) {
+    public function setMakeJsData($make_js_data = false) {
         $this->make_js_data = $make_js_data ? true : false;
     }
 
@@ -267,8 +267,45 @@ class area {
                     $add['other_name'] = '';//类别名称
                     $add['name_format'] = '';//格式化全称
                     $this->province_city[] = $add;
-                }
+                    if (!$this->make_js_data) {
+                        // 以下代码删除后仅生成三级地区（到区县）
+                        if (substr($val[0], -3, 3) !== '100') {
+                            echo $val[0] . "\n";
+                            ob_flush();
+                            // 简中
+                            $streets_SC = file_get_contents('http://lsp.wuliu.taobao.com/locationservice/addr/output_address_town_array.do?l1=' . $val[2] . '&l2=' . $val[0] . '&lang=zh-S');
+                            $streets_SC = substr($streets_SC, 30);
+                            $streets_SC = substr($streets_SC, 0, -3);
+                            $streets_SC = str_replace("'", '"', $streets_SC);
+                            $arr_streets_SC = json_decode($streets_SC, true);
 
+                            // 繁中
+                            $streets_TC = file_get_contents('http://lsp.wuliu.taobao.com/locationservice/addr/output_address_town_array.do?l1=' . $val[2] . '&l2=' . $val[0] . '&lang=zh-T');
+                            $streets_TC = substr($streets_TC, 30);
+                            $streets_TC = substr($streets_TC, 0, -3);
+                            $streets_TC = str_replace("'", '"', $streets_TC);
+                            $arr_streets_TC = json_decode($streets_TC, true);
+
+                            foreach ((array)$arr_streets_SC as $s_sc) {
+                                $add = [];
+                                $add['id'] = $s_sc[0];
+                                $add['name'] = $s_sc[1];
+                                foreach ((array)$arr_streets_TC as $s_tc) {
+                                    if ($s_sc[0] === $s_tc[0]) {
+                                        $add['name_traditional'] = $s_tc[1];
+                                        break;
+                                    }
+                                }
+                                $add['parent_id'] = $s_sc[2];
+                                $add['type'] = 0;
+                                $add['type_name'] = '';//类别名称
+                                $add['other_name'] = '';//类别名称
+                                $add['name_format'] = '';//格式化全称
+                                $this->province_city[] = $add;
+                            }
+                        }
+                    }
+                }
             }
         }
         // echo $html;
@@ -440,42 +477,46 @@ class area {
     private function makeSql() {
         $sql = [];
         $sql[] = <<<EOF
+DROP TABLE IF EXISTS `area`;
 CREATE TABLE `area` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `name` CHAR(50) DEFAULT '' COMMENT '名称',
+  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(50) DEFAULT '' COMMENT '名称',
   `name_traditional` VARCHAR(50) DEFAULT '' COMMENT '繁体名称',
   `name_en` VARCHAR(100) DEFAULT '' COMMENT '英文名称',
-  `parent_id` INT(11) DEFAULT '0' COMMENT '上级栏目ID',
-  `type` TINYINT(4) DEFAULT '0' COMMENT '类别;0默认;1又名;2;3属于;11已合并到;12已更名为',
-  `sort` INT(11) DEFAULT '0' COMMENT '排序',
+  `parent_id` INT(10) UNSIGNED DEFAULT '0' COMMENT '上级栏目ID',
+  `type` TINYINT(2) UNSIGNED DEFAULT '0' COMMENT '类别;0默认;1又名;2;3属于;11已合并到;12已更名为',
+  `sort` INT(10) UNSIGNED DEFAULT '0' COMMENT '排序',
   `type_name` VARCHAR(50) DEFAULT '' COMMENT '类别名称',
   `other_name` VARCHAR(50) DEFAULT '' COMMENT '根据类别名称填写',
-  `name_format` CHAR(80) DEFAULT NULL COMMENT '格式化全称',
+  `name_format` VARCHAR(80) DEFAULT '' COMMENT '格式化全称',
   PRIMARY KEY (`id`),
   KEY `id` (`id`,`parent_id`,`sort`) USING BTREE,
   KEY `name` (`name`),
   KEY `name_format` (`name_format`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='地区表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='地区表';
 
+DROP TABLE IF EXISTS `area_ext`;
 CREATE TABLE `area_ext` (
-  `ext_id` INT(11) NOT NULL AUTO_INCREMENT,
-  `id` INT(11) DEFAULT '0' COMMENT 'ID',
-  `name` CHAR(50) DEFAULT '' COMMENT '名称',
+  `ext_id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id` INT(10) UNSIGNED DEFAULT '0' COMMENT 'ID',
+  `name` VARCHAR(50) DEFAULT '' COMMENT '名称',
   `name_traditional` VARCHAR(50) DEFAULT '' COMMENT '繁体名称',
   `name_en` VARCHAR(100) DEFAULT '' COMMENT '英文名称',
-  `parent_id` INT(11) DEFAULT '0' COMMENT '上级栏目ID',
-  `type` TINYINT(4) DEFAULT '0' COMMENT '类别;0默认;1又名;2;3属于;11已合并到;12已更名为',
-  `sort` INT(11) DEFAULT '0' COMMENT '排序',
+  `parent_id` INT(10) UNSIGNED DEFAULT '0' COMMENT '上级栏目ID',
+  `type` TINYINT(2) UNSIGNED DEFAULT '0' COMMENT '类别;0默认;1又名;2;3属于;11已合并到;12已更名为',
+  `sort` INT(10) UNSIGNED DEFAULT '0' COMMENT '排序',
   `type_name` VARCHAR(50) DEFAULT '' COMMENT '类别名称',
   `other_name` VARCHAR(50) DEFAULT '' COMMENT '根据类别名称填写',
-  `name_format` CHAR(80) DEFAULT NULL COMMENT '格式化全称',
+  `name_format` VARCHAR(80) DEFAULT '' COMMENT '格式化全称',
   PRIMARY KEY (`ext_id`),
   KEY `id` (`id`,`parent_id`,`sort`) USING BTREE,
   KEY `name_format` (`name_format`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='地区扩展表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='地区扩展表';
 
 EOF;
+        $t = 0;
         foreach ($this->province_city as $val) {
+            $t++;
             $val['id'] = (int)$val['id'];
             $val['parent_id'] = (int)$val['parent_id'];
             $val['type'] = (int)$val['type'];
@@ -490,10 +531,18 @@ EOF;
             } else {
                 $val['name_format'] = '';
             }
-            $sql[] = "INSERT INTO `area` (`id`,`name`,`name_traditional`,`name_en`,`parent_id`,`type`,`type_name`,`other_name`,`name_format`)VALUE ('{$val['id']}', '{$val['name']}', '{$val['name_traditional']}', '{$val['name_en']}', '{$val['parent_id']}', '{$val['type']}', '{$val['type_name']}', '{$val['other_name']}', '{$val['name_format']}');";
+            if ($t === 1) {
+                $sql[] = "INSERT INTO `area` (`id`,`name`,`name_traditional`,`name_en`,`parent_id`,`type`,`type_name`,`other_name`,`name_format`) VALUES ('{$val['id']}', '{$val['name']}', '{$val['name_traditional']}', '{$val['name_en']}', '{$val['parent_id']}', '{$val['type']}', '{$val['type_name']}', '{$val['other_name']}', '{$val['name_format']}')";
+            } else {
+                $sql[] = ", ('{$val['id']}', '{$val['name']}', '{$val['name_traditional']}', '{$val['name_en']}', '{$val['parent_id']}', '{$val['type']}', '{$val['type_name']}', '{$val['other_name']}', '{$val['name_format']}')";
+            }
         }
+        $sql[] = ';';
+
         //扩展
+        $t = 0;
         foreach ($this->province_city_ext as $val) {
+            $t++;
             $val['id'] = (int)$val['id'];
             $val['parent_id'] = (int)$val['parent_id'];
             $val['type'] = (int)$val['type'];
@@ -508,8 +557,13 @@ EOF;
             } else {
                 $val['name_format'] = '';
             }
-            $sql[] = "INSERT INTO `area_ext` (`id`,`name`,`name_traditional`,`name_en`,`parent_id`,`type`,`type_name`,`other_name`,`name_format`)VALUE ('{$val['id']}', '{$val['name']}', '{$val['name_traditional']}', '{$val['name_en']}', '{$val['parent_id']}', '{$val['type']}', '{$val['type_name']}', '{$val['other_name']}', '{$val['name_format']}');";
+            if ($t === 1) {
+                $sql[] = "INSERT INTO `area_ext` (`id`,`name`,`name_traditional`,`name_en`,`parent_id`,`type`,`type_name`,`other_name`,`name_format`) VALUES ('{$val['id']}', '{$val['name']}', '{$val['name_traditional']}', '{$val['name_en']}', '{$val['parent_id']}', '{$val['type']}', '{$val['type_name']}', '{$val['other_name']}', '{$val['name_format']}')";
+            } else {
+                $sql[] = ", ('{$val['id']}', '{$val['name']}', '{$val['name_traditional']}', '{$val['name_en']}', '{$val['parent_id']}', '{$val['type']}', '{$val['type_name']}', '{$val['other_name']}', '{$val['name_format']}')";
+            }
         }
+        $sql[] = ';';
         //写入存储文件
         file_put_contents($this->getTmpPath() . 'area.sql', implode("\n", $sql));
     }
@@ -537,7 +591,6 @@ EOF;
                         $this->province_city[] = $add;
                     }
                 }
-
             }
         }
     }
@@ -568,9 +621,11 @@ EOF;
         }
         if ($this->make_csv) {
             $this->makeCsv();
+            echo "Make csv data file SUCCESS\n";
         }
         if ($this->make_sql) {
             $this->makeSql();
+            echo "Make sql data file SUCCESS\n";
         }
         //生成js 数据
         if ($this->make_js_data) {
@@ -581,7 +636,6 @@ EOF;
             $makeJs->setCityExt($this->province_city_ext);
             $makeJs->process();
         }
-        echo "make SUCCESS \n";
         return true;
     }
 }

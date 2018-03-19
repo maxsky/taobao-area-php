@@ -94,7 +94,7 @@ class makeJsData {
 EOF;
         //写入存储文件
         file_put_contents($this->path . 'city-picker.data.js', $str);
-        echo "make js data  Success  ";
+        echo "Make js data file Success\n";
         return true;
     }
 }
