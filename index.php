@@ -2,7 +2,7 @@
 include "area.php";
 include "area_ext.php";
 // 淘宝收货地址页面
-$js_url = 'https://g.alicdn.com/vip/address/6.0.14/index-min.js';
+$js_url = 'https://g.alicdn.com/vip/address/6.1.1/index-min.js';
 
 // 生成 JS DATA
 $c = new area();
