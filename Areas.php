@@ -216,10 +216,11 @@ EOF;
         $this->appendSqlValues(self::OUTPUT_FILE_PATH, $this->provinces);
         echo "----- 生成省市数据 ------\n";
         $this->appendSqlValues(self::OUTPUT_FILE_PATH, $this->cities);
-        echo "----- 生成市区数据 ------\n";
-        $this->appendSqlValues(self::OUTPUT_FILE_PATH, $this->districts);
 
+        echo "----- 生成市区数据 ------\n";
         if ($this->getTowns) {
+            $this->appendSqlValues(self::OUTPUT_FILE_PATH, $this->districts);
+
             $begin = date('Y-m-d H:i:s');
             echo "----- 生成街道数据开始，时间：{$begin} ------\n";
             ini_set('memory_limit', '512M');
@@ -227,6 +228,8 @@ EOF;
             $this->appendSqlValues(self::OUTPUT_FILE_PATH, $towns, true);
             $end = date('Y-m-d H:i:s');
             echo "----- 生成街道数据结束，时间：{$end} ------\n";
+        } else {
+            $this->appendSqlValues(self::OUTPUT_FILE_PATH, $this->districts, true);
         }
 
         file_put_contents(self::OUTPUT_FILE_PATH, ';', FILE_APPEND);
