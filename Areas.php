@@ -13,7 +13,6 @@ class Areas {
     const GET_TOWNS_URL = 'https://lsp.wuliu.taobao.com/locationservice/addr/output_address_town_array.do';
     const VALUE_SQL = 'INSERT INTO `area` VALUES ';
 
-    // AUTO_INCREMENT
     const TABLE_SQL = <<<EOF
 DROP TABLE IF EXISTS `area`;
 CREATE TABLE `area` (
@@ -41,6 +40,8 @@ EOF;
         'v' => '2.0',
     ];
 
+    private $ch;
+
     private $getTowns = false;
 
     private $countries;
@@ -51,6 +52,17 @@ EOF;
 
     public function __construct() {
         $this->requestParams['timestamp'] = date('Y-m-d H:i:s');
+
+        $this->ch = curl_init();
+
+        curl_setopt_array($this->ch, [
+            CURLOPT_AUTOREFERER => true,
+            CURLOPT_HEADER => false,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_CONNECTTIMEOUT => 10
+        ]);
     }
 
     public function needTowns($need = false) {
@@ -89,7 +101,7 @@ EOF;
         $this->requestParams['sign'] = $this->getSign($this->requestParams);
         $url = self::GET_AREAS_URL . '?' . http_build_query($this->requestParams);
 
-        echo "请求地址：{$url}\n";
+        echo "获取基本区域数据...\n请求地址：{$url}\n";
 
         $jsonFile = file_get_contents($url);
 
@@ -134,11 +146,11 @@ EOF;
     }
 
     private function appendSqlValues($file_path, $areas, $last = false) {
-        $count = count($areas);
+        $lastKey = count($areas) - 1;
         foreach ($areas as $key => $area) {
             $data = "({$area['id']},{$area['type']},'{$area['name']}',{$area['parent_id']}),";
 
-            if ($last && $key === $count) {
+            if ($last && $key === $lastKey) {
                 $data = rtrim($data, ',');
             }
 
@@ -149,12 +161,17 @@ EOF;
         }
     }
 
+    private function curlRequest($url) {
+        curl_setopt($this->ch, CURLOPT_URL, $url);
+        return curl_exec($this->ch);
+    }
+
     private function getTowns() {
         $ret = [];
         foreach ($this->districts as $district) {
             $url = self::GET_TOWNS_URL . "?l1={$district['parent_id']}&l2={$district['id']}";
             for ($i = 0; $i < 3; $i++) {
-                $towns = file_get_contents($url);
+                $towns = $this->curlRequest($url);
                 if ($towns && stripos($towns, 'callback({success:true,result') !== false) {
                     break;
                 }
@@ -207,7 +224,7 @@ EOF;
             echo "----- 生成街道数据开始，时间：{$begin} ------\n";
             ini_set('memory_limit', '512M');
             $towns = $this->getTowns();
-            $this->appendSqlValues(self::OUTPUT_FILE_PATH, $towns);
+            $this->appendSqlValues(self::OUTPUT_FILE_PATH, $towns, true);
             $end = date('Y-m-d H:i:s');
             echo "----- 生成街道数据结束，时间：{$end} ------\n";
         }
@@ -215,5 +232,9 @@ EOF;
         file_put_contents(self::OUTPUT_FILE_PATH, ';', FILE_APPEND);
 
         return true;
+    }
+
+    public function __destruct() {
+        curl_close($this->ch);
     }
 }
